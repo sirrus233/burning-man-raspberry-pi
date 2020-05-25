@@ -1,0 +1,163 @@
+# Raspberry Pi setup
+
+SD card management
+image\_0:    Raw OS distro (2016-05-27-raspbian-jessie)
+image\_1: Raw OS + basic setup (step 1)
+image\_3: Raw OS + basic setup + dev setup + git setup (step 3)
+image\_4: Raw OS + basic setup + dev setup + git setup + ad-hoc wifi (step 4)
+image\_5: 4 + auto-start tstar on boot
+
+
+Burn OS image onto SD card
+Run Disk Utility
+Select SD card
+Note name (disk2s1)
+Click UnMount
+Launch Terminal
+cd Dropbox/Pi/images
+sudo dd bs=1m if=image\_0.img of=/dev/rdisk2
+(change file name as appropriate, replace rdisk2 with rdiskn, based on value from Disk Utility
+
+Clone SD card
+sudo dd bs=1m if=/dev/rdisk2 of=image\_0.img
+
+
+
+1. Basic setup
+Preferences
+Menu / Preferences / Raspberry Pi Configuration
+-- Expand filesystem
+-- Change password
+-- Interfaces / Enable SPI
+-- Localization / Locale US
+-- Localization / Keyboard / United States / English (Macintosh)
+-- OK / OK
+Reboot
+
+Wifi
+Click network icon (top right), set up network
+
+Upgrade OS
+sudo apt-get update
+sudo apt-get dist-upgrade
+Reboot
+
+
+
+2. Dev setup
+Install packages
+sudo apt-get install python3-gpiozero iceweasel
+(skip python3-dev)
+
+Set up spidev
+git clone git://github.com/doceme/py-spidev
+cd py-spidev
+sudo python3 setup.py install
+
+
+
+3. Git setup
+Create SSH key
+ssh-keygen -t rsa -b 4096 -C “usernamegoeshere"        Default file, add passphrase
+ssh-add /.ssh/idrsa
+
+Add key to GitHub account
+Menu / Internet / Firefox
+Github / User / Settings / SSH and GPG keys / New SSH Key
+Name: Raspi
+Menu / Accessories / Text editor
+Open / /.ssh/idrsa.pub
+Copy all text
+Paste into key
+OK
+
+Enable SSH key usage
+ssh -T git@github.com
+
+Set up account
+git config --global user.name “namegoeshere"
+git config --global user.email “emailgoeshere"
+
+Set up tstar
+cd 
+git clone git@github.com:usergoeshere/projectgoeshere.git
+
+
+
+4. Set up ad-hoc wifi
+sudo app-get install isc-dhcp-server
+sudo nano /etc/dhcp/dhcpd.conf
+ddns-update-style interim;
+default-lease-time 600;
+max-lease-time 7200;
+authoritative;
+log-facility local7;
+subnet 192.168.1.0 netmask 255.255.255.0 {
+range 192.168.1.5 192.168.1.150;
+}
+sudo reboot
+
+cd /etc/network
+sudo cp interfaces interfaces-wifi
+sudo cp interfaces interfaces-wifi-backup
+sudo cp interfaces interfaces-adhoc
+sudo nano interfaces-adhoc
+auto lo
+iface lo inet loopback
+iface eth0 inet dhcp
+
+auto wlan0
+iface wlan0 inet static
+address 192.168.1.1
+netmask 255.255.255.0
+wireless-channel 1
+wireless-essid RPiwireless
+wireless-mode ad-hoc
+sudo reboot
+
+
+Switch to ad-hoc:
+cd /etc/network
+sudo cp interfaces-adhoc interfaces
+sudo reboot
+Switch to normal network: 
+cd /etc/network
+sudo cp interfaces-wifi interfaces
+sudo reboot
+See http://slicepi.com/creating-an-ad-hoc-network-for-your-raspberry-pi/
+
+
+
+5. Run tstar on boot
+sudo nano /etc/init.d/tstar
+# ! /bin/sh
+# /etc/init.d/tstar
+ 
+### BEGIN INIT INFO
+# Provides:          tstar
+# Required-Start:    $remote\_fs $syslog
+# Required-Stop:     $remote\_fs $syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: start a program from boot
+# Description:       A simple script  which will start a program from boot and stop upon shut-down
+### END INIT INFO
+ 
+# Put any commands you always want to run here.
+ 
+case "$1" in
+start)
+echo "Starting tstar"
+python3 /home/pi/tstar/TBike/py
+;;
+stop)
+echo "Stopping tstar"
+;;
+\*)
+ echo "Usage: /etc/init.d/tstar start|stop"
+ exit 1
+ ;;
+esac
+
+sudo chmod +x /etc/init.d/tstar
+sudo update-rc.d tstar defaults
