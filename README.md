@@ -1,4 +1,4 @@
-## Note: I am not the author of this code. Storing here for backup purposes.
+## Note: This code was originally written by Matt Bamberger. Stored here with his permission.
 
 This is a set of python scripts to drive some fun patterns on programmable LED panels.
 
